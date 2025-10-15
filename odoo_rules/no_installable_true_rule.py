@@ -1,4 +1,5 @@
 import libcst as cst
+import libcst.matchers as m
 from fixit import LintRule, InvalidTestCase, ValidTestCase
 
 
@@ -40,7 +41,19 @@ class NoInstallableTrueRule(LintRule):
     'name': 'Otro Módulo',
 }
 '''
-        )
+        ),
+        InvalidTestCase(
+            code="""
+{
+    "name": "hola",
+    "installable": (
+        True),
+}""",
+            expected_replacement='''
+{
+    "name": "hola",
+}'''
+        ),
     ]
     
     # Define código que DEBE ser válido (VALID)
@@ -64,21 +77,18 @@ class NoInstallableTrueRule(LintRule):
         )
     ]
 
-    # 🔍 Lógica de Detección
     def visit_DictElement(self, node: cst.DictElement) -> None:
-        # 1. Verificar si la clave es 'installable' (string literal)
-        import pdb;pdb.set_trace()
         if (
             isinstance(node.key, cst.SimpleString)
             and node.key.value in ("'installable'", '"installable"')
         ):
-            # 2. Verificar si el valor es True (Name literal)
             if (
                 isinstance(node.value, cst.Name)
                 and node.value.value == "True"
             ):
                 # 3. Reportar el error con un autofix
-                
+                # import pdb;pdb.set_trace()
+                # m.matches(node.value.value, m.Name("True"))
                 # La clave para el autofix es usar cst.RemoveFromParent()
                 # para indicarle a LibCST que elimine el nodo DictElement completo.
                 self.report(
