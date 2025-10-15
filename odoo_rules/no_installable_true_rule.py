@@ -45,14 +45,16 @@ class NoInstallableTrueRule(LintRule):
         InvalidTestCase(
             code="""
 {
-    "name": "hola",
     "installable": (
         True),
-}""",
-            expected_replacement='''
+    "name": "hola",
+}
+""",
+            expected_replacement="""
 {
     "name": "hola",
-}'''
+}
+"""
         ),
     ]
     
