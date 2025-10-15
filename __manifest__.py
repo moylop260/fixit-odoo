@@ -1,0 +1,4 @@
+{
+    "name": "hola",
+    "installable": True,
+}
