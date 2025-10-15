@@ -1,0 +1,16 @@
+# pyproject.toml
+
+# Configuración del paquete (si existe)
+[tool.poetry]
+# ...
+
+# Configuración de Fixit (¡Aquí no usamos YAML, sino TOML!)
+[tool.fixit]
+
+# Definir la ruta base para que Fixit sepa dónde está el paquete "odoo_rules"
+# Usamos un array de strings en TOML
+cli_base_paths = ["odoo_rules"] 
+
+# Habilitar la regla usando la ruta completa
+# La ruta es: 'nombre_del_directorio.nombre_del_archivo.NombreDeLaClase'
+enable = ["odoo_rules.odoo_rules.NoInstallableTrueRule"]
