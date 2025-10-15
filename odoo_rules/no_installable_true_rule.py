@@ -7,23 +7,19 @@ class NoInstallableTrueRule(LintRule):
     """Identifies and removes 'installable': True from Odoo manifest files (__manifest__.py).
     'installable': True is the default and should be omitted for simplicity.
     """
-    
-    # 📚 Casos de Prueba (Opcional pero muy recomendado)
-    # Define código que DEBE fallar (INVALID) y cómo DEBE quedar (expected_replacement)
     INVALID = [
         InvalidTestCase(
             code="""
 {
-    'name': 'Mi Módulo',
     'installable': True,
-    'depends': ['base'],
+    'depends': [],
+    'author': '',
+    'name': 'Mi Módulo',
 }
 """,
-            # El reemplazo solo incluye el nodo inmediatamente anterior (la coma)
             expected_replacement='''
 {
     'name': 'Mi Módulo',
-    'depends': ['base'],
 }
 '''
         ),
@@ -44,6 +40,7 @@ class NoInstallableTrueRule(LintRule):
         InvalidTestCase(
             code="""
 {
+    "active": True,
     "installable": (
         True),
     "name": "hola",
@@ -65,6 +62,7 @@ class NoInstallableTrueRule(LintRule):
     'name': 'Mi Módulo',
     'depends': ['base'],
     'installable': False,
+    'active': False,
 }
 """
         ),
@@ -81,10 +79,17 @@ class NoInstallableTrueRule(LintRule):
     def visit_DictElement(self, node: cst.DictElement) -> None:
         if not isinstance(node.key, cst.SimpleString):
             return
-        if node.key.evaluated_value == "installable":
+        if (isinstance(node.value, cst.List) and not node.value.elements) or (
+            isinstance(node.value, cst.SimpleString) and not node.value.evaluated_value):
+            self.report(
+                node,
+                "Delete empty values.",
+                replacement=cst.RemoveFromParent(),
+            )
+        if node.key.evaluated_value in ("active", "installable"):
             if isinstance(node.value, cst.Name) and node.value.value == "True":
                 self.report(
                     node,
-                    "Eliminar 'installable': True, ya que es el valor por defecto.",
+                    "Delete default values",
                     replacement=cst.RemoveFromParent(),
                 )
