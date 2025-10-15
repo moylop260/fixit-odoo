@@ -1,1 +1,1 @@
-from . import odoo_rules
+from . import no_installable_true_rule

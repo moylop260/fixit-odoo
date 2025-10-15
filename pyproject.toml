@@ -13,4 +13,4 @@ cli_base_paths = ["odoo_rules"]
 
 # Habilitar la regla usando la ruta completa
 # La ruta es: 'nombre_del_directorio.nombre_del_archivo.NombreDeLaClase'
-enable = ["odoo_rules.odoo_rules.NoInstallableTrueRule"]
+enable = ["odoo_rules.no_installable_true_rule"]
