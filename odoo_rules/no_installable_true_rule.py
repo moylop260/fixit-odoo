@@ -4,8 +4,7 @@ from fixit import LintRule, InvalidTestCase, ValidTestCase
 
 
 class NoInstallableTrueRule(LintRule):
-    """
-    Identifies and removes 'installable': True from Odoo manifest files (__manifest__.py).
+    """Identifies and removes 'installable': True from Odoo manifest files (__manifest__.py).
     'installable': True is the default and should be omitted for simplicity.
     """
     
@@ -80,19 +79,10 @@ class NoInstallableTrueRule(LintRule):
     ]
 
     def visit_DictElement(self, node: cst.DictElement) -> None:
-        if (
-            isinstance(node.key, cst.SimpleString)
-            and node.key.value in ("'installable'", '"installable"')
-        ):
-            if (
-                isinstance(node.value, cst.Name)
-                and node.value.value == "True"
-            ):
-                # 3. Reportar el error con un autofix
-                # import pdb;pdb.set_trace()
-                # m.matches(node.value.value, m.Name("True"))
-                # La clave para el autofix es usar cst.RemoveFromParent()
-                # para indicarle a LibCST que elimine el nodo DictElement completo.
+        if not isinstance(node.key, cst.SimpleString):
+            return
+        if node.key.evaluated_value == "installable":
+            if isinstance(node.value, cst.Name) and node.value.value == "True":
                 self.report(
                     node,
                     "Eliminar 'installable': True, ya que es el valor por defecto.",
