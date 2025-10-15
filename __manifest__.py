@@ -1,7 +1,6 @@
 {
     "name": "hola",
-    "installable": (
-        True),
+    "installable": (True),
     "depends": [],
     "author": "",
 }
