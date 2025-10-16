@@ -98,6 +98,7 @@ class TestModel(models.Model):
     def visit_Call(self, node: cst.Call) -> None:
         odoo_version_tuple = version_parse(ODOO_VERSION)
         if not odoo_version_tuple:
+            # TODO: R&D if there is a warning logger in the library
             warnings.warn(
                 f"Invalid manifest versions format {ODOO_VERSION}. "
                 "It was not possible to run prefer_env_translation_rule",
@@ -110,7 +111,6 @@ class TestModel(models.Model):
         # TODO: R&D how to get the "version" from manifest of the current node's module
         if version_parse(self.ODOO_MIN_VERSION) > version_parse(ODOO_VERSION):
             return
-        # Infer the import origin of `_`
         qualified_names = self.get_metadata(QualifiedNameProvider, node.func, set())
         for qname in qualified_names:
             if isinstance(qname, QualifiedName) and qname.name.startswith("odoo._"):
