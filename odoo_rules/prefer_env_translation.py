@@ -23,77 +23,79 @@ class PreferEnvTranslationRule(LintRule):
     MESSAGE = "Use self.env._(...) instead of _(…) directly inside Odoo model methods."
     METADATA_DEPENDENCIES = (QualifiedNameProvider,)
     ODOO_MIN_VERSION = "18.0"
-
-    VALID = [
-        ValidTestCase(
-            code="""
-from odoo import models, _
-
-
-class TestModel(models.Model):
-    def my_method(self):
-        self.env._("ok")
-"""
-        ),
-        ValidTestCase(
-            code="""
-from gettext import gettext as _
+    VALID = []
+    INVALID = []
+    if version_parse(ODOO_MIN_VERSION) <= version_parse(ODOO_VERSION):
+        VALID = [
+            ValidTestCase(
+                code="""
+    from odoo import models, _
 
 
-def outside_model():
-    _("not Odoo")
-"""
-        ),
-        ValidTestCase(
-            code="""
-_ = lambda *a: True
+    class TestModel(models.Model):
+        def my_method(self):
+            self.env._("ok")
+    """
+            ),
+            ValidTestCase(
+                code="""
+    from gettext import gettext as _
 
 
-class TestModel(models.Model):
-    def my_method(self):
-        _("is not a Odoo translation")
-"""
-        ),
-    ]
-
-    INVALID = [
-        InvalidTestCase(
-            code="""
-from odoo import models, _
+    def outside_model():
+        _("not Odoo")
+    """
+            ),
+            ValidTestCase(
+                code="""
+    _ = lambda *a: True
 
 
-class TestModel(models.Model):
-    def my_method(self):
-        _("old translated")
-""",
-            expected_replacement="""
-from odoo import models, _
+    class TestModel(models.Model):
+        def my_method(self):
+            _("is not a Odoo translation")
+    """
+            ),
+        ]
+
+        INVALID = [
+            InvalidTestCase(
+                code="""
+    from odoo import models, _
 
 
-class TestModel(models.Model):
-    def my_method(self):
-        self.env._("old translated")
-""",
-        ),
-        InvalidTestCase(
-            code="""
-from odoo import models, _ as lt
+    class TestModel(models.Model):
+        def my_method(self):
+            _("old translated")
+    """,
+                expected_replacement="""
+    from odoo import models, _
 
 
-class TestModel(models.Model):
-    def my_method(self):
-        lt("old translated")
-""",
-            expected_replacement="""
-from odoo import models, _ as lt
+    class TestModel(models.Model):
+        def my_method(self):
+            self.env._("old translated")
+    """,
+            ),
+            InvalidTestCase(
+                code="""
+    from odoo import models, _ as lt
 
 
-class TestModel(models.Model):
-    def my_method(self):
-        self.env._("old translated")
-""",
-        ),
-    ]
+    class TestModel(models.Model):
+        def my_method(self):
+            lt("old translated")
+    """,
+                expected_replacement="""
+    from odoo import models, _ as lt
+
+
+    class TestModel(models.Model):
+        def my_method(self):
+            self.env._("old translated")
+    """,
+            ),
+        ]
 
     def visit_Call(self, node: cst.Call) -> None:
         odoo_version_tuple = version_parse(ODOO_VERSION)
