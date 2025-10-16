@@ -1,6 +1,18 @@
+import os
+import warnings
+
 import libcst as cst
-from libcst.metadata import QualifiedNameProvider, QualifiedName
-from fixit import LintRule, InvalidTestCase, ValidTestCase
+from fixit import InvalidTestCase, LintRule, ValidTestCase
+from libcst.metadata import QualifiedName, QualifiedNameProvider
+
+ODOO_VERSION = os.getenv("VERSION")
+
+
+def version_parse(version_str):
+    try:
+        return tuple(map(int, version_str.split(".")))
+    except (ValueError, TypeError):
+        return tuple()
 
 
 class PreferEnvTranslationRule(LintRule):
@@ -10,6 +22,7 @@ class PreferEnvTranslationRule(LintRule):
 
     MESSAGE = "Use self.env._(...) instead of _(…) directly inside Odoo model methods."
     METADATA_DEPENDENCIES = (QualifiedNameProvider,)
+    ODOO_MIN_VERSION = "18.0"
 
     VALID = [
         ValidTestCase(
@@ -62,7 +75,6 @@ class TestModel(models.Model):
         self.env._("old translated")
 """,
         ),
-
         InvalidTestCase(
             code="""
 from odoo import models, _ as lt
@@ -84,9 +96,20 @@ class TestModel(models.Model):
     ]
 
     def visit_Call(self, node: cst.Call) -> None:
+        odoo_version_tuple = version_parse(ODOO_VERSION)
+        if not odoo_version_tuple:
+            warnings.warn(
+                f"Invalid manifest versions format {ODOO_VERSION}. "
+                "It was not possible to run prefer_env_translation_rule",
+                UserWarning,
+                stacklevel=2,
+            )
+            return
         if not isinstance(node.func, cst.Name):
             return
-
+        # TODO: R&D how to get the "version" from manifest of the current node's module
+        if version_parse(self.ODOO_MIN_VERSION) > version_parse(ODOO_VERSION):
+            return
         # Infer the import origin of `_`
         qualified_names = self.get_metadata(QualifiedNameProvider, node.func, set())
         for qname in qualified_names:
