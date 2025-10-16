@@ -1,11 +1,15 @@
 import libcst as cst
+from libcst.metadata import QualifiedNameProvider, QualifiedName
 from fixit import LintRule, InvalidTestCase, ValidTestCase
 
 
-class NoInstallableTrueRule(LintRule):
-    """Replace _('text') calls with self.env._('text') inside Odoo model methods."""
+class PreferEnvTranslationRule(LintRule):
+    """
+    Replace _('text') with self.env._('text') only if '_' comes from 'odoo'.
+    """
 
     MESSAGE = "Use self.env._(...) instead of _(…) directly inside Odoo model methods."
+    METADATA_DEPENDENCIES = (QualifiedNameProvider,)
 
     VALID = [
         ValidTestCase(
@@ -15,9 +19,28 @@ from odoo import models, _
 
 class TestModel(models.Model):
     def my_method(self):
-        self.env._("new translated")
+        self.env._("ok")
 """
-        )
+        ),
+        ValidTestCase(
+            code="""
+from gettext import gettext as _
+
+
+def outside_model():
+    _("not Odoo")
+"""
+        ),
+        ValidTestCase(
+            code="""
+_ = lambda *a: True
+
+
+class TestModel(models.Model):
+    def my_method(self):
+        _("is not a Odoo translation")
+"""
+        ),
     ]
 
     INVALID = [
@@ -29,8 +52,6 @@ from odoo import models, _
 class TestModel(models.Model):
     def my_method(self):
         _("old translated")
-        self.env._("new translated")
-
 """,
             expected_replacement="""
 from odoo import models, _
@@ -39,25 +60,41 @@ from odoo import models, _
 class TestModel(models.Model):
     def my_method(self):
         self.env._("old translated")
-        self.env._("new translated")
-
 """,
-        )
+        ),
+
+        InvalidTestCase(
+            code="""
+from odoo import models, _ as lt
+
+
+class TestModel(models.Model):
+    def my_method(self):
+        lt("old translated")
+""",
+            expected_replacement="""
+from odoo import models, _ as lt
+
+
+class TestModel(models.Model):
+    def my_method(self):
+        self.env._("old translated")
+""",
+        ),
     ]
 
     def visit_Call(self, node: cst.Call) -> None:
-        """
-        Visit every function call node.
-        If the call is _('...'), report it for replacement.
-        """
-        if isinstance(node.func, cst.Name) and node.func.value == "_":
-            # Register the violation and attach a fix
-            self.report(node, replacement=self.fix(node))
+        if not isinstance(node.func, cst.Name):
+            return
+
+        # Infer the import origin of `_`
+        qualified_names = self.get_metadata(QualifiedNameProvider, node.func, set())
+        for qname in qualified_names:
+            if isinstance(qname, QualifiedName) and qname.name.startswith("odoo._"):
+                self.report(node, replacement=self.fix(node))
+                break
 
     def fix(self, node: cst.Call) -> cst.Call:
-        """
-        Return the fixed version of _('text') → self.env._('text').
-        """
         return node.with_changes(
             func=cst.Attribute(
                 value=cst.Attribute(
